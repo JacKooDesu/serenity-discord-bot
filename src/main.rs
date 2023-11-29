@@ -52,10 +52,16 @@ async fn main() {
     tracing_subscriber::fmt::init();
     let framework = StandardFramework::new().group(&GENERAL_GROUP);
     // .configure(|c:Configuration| c.prefix("!"));
-
+    let args: Vec<_> = env::args().collect();
     let token = match env::var("DISCORD_TOKEN") {
         Ok(s) => s,
-        Err(_) => panic!("{:?}", "cannot get token"),
+        Err(_) => {
+            if let 0 = args.len() {
+                panic!("{:?}", "cannot get token")
+            } else {
+                dbg!(args[1].to_string())
+            }
+        }
     };
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
     let mut client = serenity::Client::builder(&token, intents)
