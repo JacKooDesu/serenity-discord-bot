@@ -4,7 +4,10 @@ use serenity::{
     all::ChannelId, async_trait, client::Context, http::Http, model::channel::Message,
     prelude::TypeMapKey, Result as SerenityResult,
 };
-use songbird::events::{Event, EventContext, EventHandler as VoiceEventHandler};
+use songbird::{
+    events::{Event, EventContext, EventHandler as VoiceEventHandler},
+    Songbird,
+};
 
 use reqwest::Client as HttpClient;
 
@@ -93,4 +96,11 @@ pub(super) fn check_msg(result: SerenityResult<Message>) {
     if let Err(why) = result {
         println!("Error sending message: {:?}", why);
     }
+}
+
+pub async fn get_manager(ctx: &Context) -> Arc<Songbird> {
+    songbird::get(ctx)
+        .await
+        .expect("Songbird Voice client placed in at initialisation.")
+        .clone()
 }

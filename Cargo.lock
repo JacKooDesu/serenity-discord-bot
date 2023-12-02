@@ -2019,6 +2019,7 @@ version = "0.1.0"
 dependencies = [
  "google-youtube3",
  "reqwest",
+ "serde",
  "serenity",
  "songbird",
  "symphonia",
