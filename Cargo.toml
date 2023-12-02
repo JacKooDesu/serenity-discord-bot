@@ -20,7 +20,13 @@ serde = "*"
 [dependencies.serenity]
 # git = "https://github.com/serenity-rs/serenity.git"
 version = "0.12.0-rc"
-features = ["client", "standard_framework", "voice","rustls_backend"]
+features = [
+    "client",
+    "standard_framework",
+    "voice",
+    "rustls_backend",
+    "collector",
+]
 
 [dependencies.songbird]
 features = ["builtin-queue"]

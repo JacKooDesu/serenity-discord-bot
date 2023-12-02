@@ -16,5 +16,23 @@
       "}"
     ],
     "description": "Create Command!"
+  },
+  "Create Command With Argument": {
+    "scope": "rust",
+    "prefix": "COMMAND-ARG",
+    "body": [
+      "use serenity::{",
+      "all::Message,",
+      "client::Context,",
+      "framework::standard::{macros::command, Args, CommandResult},",
+      "};",
+      "",
+      "#[command]",
+      "pub async fn $CMD_NAME(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {",
+      "",
+      "Ok(())",
+      "}"
+    ],
+    "description": "Create Command!"
   }
 }
