@@ -1,0 +1,20 @@
+{
+  "Create Command": {
+    "scope": "rust",
+    "prefix": "COMMAND",
+    "body": [
+      "use serenity::{",
+      "all::Message,",
+      "client::Context,",
+      "framework::standard::{macros::command, CommandResult},",
+      "};",
+      "",
+      "#[command]",
+      "pub async fn $CMD_NAME(ctx: &Context, msg: &Message) -> CommandResult {",
+      "",
+      "Ok(())",
+      "}"
+    ],
+    "description": "Create Command!"
+  }
+}
