@@ -1,5 +1,5 @@
 use core::time;
-use std::{borrow::BorrowMut, env, string, sync::Arc};
+use std::{borrow::BorrowMut, default, env, string, sync::Arc};
 
 // use serenity::async_trait;
 use serenity::{
@@ -19,14 +19,18 @@ use serenity::{
     Result as SerenityResult,
 };
 
-use songbird::events::{Event, EventContext, EventHandler as VoiceEventHandler, TrackEvent};
 use songbird::input::YoutubeDl;
 use songbird::SerenityInit;
+use songbird::{
+    events::{Event, EventContext, EventHandler as VoiceEventHandler, TrackEvent},
+    Config,
+};
 
 use reqwest::Client as HttpClient;
+use tracing_subscriber::fmt::format;
 
 #[group]
-#[commands(ping, play, join, set_volume, stop, skip)]
+#[commands(ping, play, join, set_volume, stop, skip, dont_spam)]
 struct General;
 
 struct HttpKey;
@@ -37,6 +41,19 @@ impl TypeMapKey for HttpKey {
 struct VolumeKey;
 impl TypeMapKey for VolumeKey {
     type Value = f32;
+}
+
+struct CommonConfigKey;
+impl TypeMapKey for CommonConfigKey {
+    type Value = CommonConfig;
+}
+struct CommonConfig {
+    dont_spam: bool,
+}
+fn create_config(dont_spam: Option<bool>) -> CommonConfig {
+    CommonConfig {
+        dont_spam: dont_spam.unwrap_or(false),
+    }
 }
 
 struct Handler;
@@ -59,10 +76,12 @@ async fn main() {
             if let 0 = args.len() {
                 panic!("{:?}", "cannot get token")
             } else {
-                dbg!(args[1].to_string())
+                println!("token: {:?}", args[1].to_string());
+                args[1].to_string()
             }
         }
     };
+    let config = create_config(None);
     let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
     let mut client = serenity::Client::builder(&token, intents)
         .event_handler(Handler)
@@ -70,6 +89,7 @@ async fn main() {
         .register_songbird()
         .type_map_insert::<HttpKey>(HttpClient::new())
         .type_map_insert::<VolumeKey>(1_f32)
+        .type_map_insert::<CommonConfigKey>(config)
         .await
         .expect("Error on creating client");
 
@@ -102,7 +122,7 @@ async fn join(ctx: &Context, msg: &Message) -> CommandResult {
     let connect_to = match channel_id {
         Some(channel) => channel,
         None => {
-            check_msg(msg.reply(&ctx, "You're not in voice channel!!").await);
+            try_say(msg.channel_id, ctx, "You're not in voice channel!!").await;
             return Ok(());
         }
     };
@@ -189,23 +209,30 @@ async fn play(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
             SongEndedNotifier {
                 channel_id: channel_id,
                 http: send_http,
+                contex: Arc::new(ctx.clone()),
             },
         );
-
-        check_msg(msg.channel_id.say(&ctx.http, "Playing!").await);
+        try_say(msg.channel_id, ctx, "Playing!").await;
     } else {
-        check_msg(msg.channel_id.say(&ctx.http, "Not in voice channel!").await);
+        say(msg.channel_id, ctx, "Not in voice channel!").await;
     }
 
     Ok(())
 }
+
 struct SongEndedNotifier {
     channel_id: ChannelId,
     http: Arc<Http>,
+    contex: Arc<Context>,
 }
 #[async_trait]
 impl VoiceEventHandler for SongEndedNotifier {
     async fn act(&self, ctx: &EventContext<'_>) -> Option<Event> {
+        if let Some(config) = &self.contex.data.read().await.get::<CommonConfigKey>() {
+            if config.dont_spam {
+                return None;
+            }
+        }
         if let EventContext::Track(list) = ctx {
             if 0 == list.len() {
                 return None;
@@ -234,9 +261,9 @@ async fn stop(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         let queue = handler.queue();
         queue.stop();
 
-        check_msg(msg.channel_id.say(&ctx.http, "Queue cleared!").await)
+        try_say(msg.channel_id, ctx, "Queue cleared!").await
     } else {
-        check_msg(msg.channel_id.say(&ctx.http, "Not in voice channel!").await)
+        say(msg.channel_id, ctx, "Not in voice channel!").await
     }
     Ok(())
 }
@@ -255,9 +282,9 @@ async fn skip(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         let queue = handler.queue();
         let _ = queue.skip();
 
-        check_msg(msg.channel_id.say(&ctx.http, "Skipped!").await)
+        try_say(msg.channel_id, ctx, "Skipped!").await
     } else {
-        check_msg(msg.channel_id.say(&ctx.http, "Not in voice channel!").await)
+        say(msg.channel_id, ctx, "Not in voice channel!").await
     }
     Ok(())
 }
@@ -274,18 +301,20 @@ async fn set_volume(ctx: &Context, msg: &Message, mut args: Args) -> CommandResu
         Ok(s) => match s.parse::<f32>() {
             Ok(f) => f.clamp(0_f32, 1_f32),
             Err(_) => {
-                check_msg(msg.channel_id.say(&ctx.http, "Volume value invalid!").await);
+                say(msg.channel_id, ctx, "Volume value invalid!").await;
                 return Ok(());
             }
         },
         Err(_) => {
-            check_msg(msg.channel_id.say(&ctx.http, "Volume value invalid!").await);
+            say(msg.channel_id, ctx, "Volume value invalid!").await;
             return Ok(());
         }
     };
 
     if let Some(volume_key) = ctx.data.write().await.get_mut::<VolumeKey>() {
-        println!("Set volume to {volume:}");
+        let log = format!("Set volume to {:?}", volume);
+        println!("{:?}", log);
+        try_say(msg.channel_id, ctx, log.as_str()).await;
         *volume_key = volume
     };
 
@@ -309,6 +338,50 @@ impl VoiceEventHandler for VolumeSetter {
             let _ = track.set_volume(self.value);
         }
         Some(Event::Cancel)
+    }
+}
+
+#[command]
+#[only_in(guilds)]
+async fn dont_spam(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let result = match args.single::<String>() {
+        Ok(s) => match s.as_str() {
+            "on" => Ok(true),
+            "off" => Ok(false),
+            _ => Err(()),
+        },
+        Err(_) => Err(()),
+    };
+
+    match result {
+        Ok(b) => {
+            say(
+                msg.channel_id,
+                ctx,
+                format!("Set spam setting to {:?}!", b).as_str(),
+            )
+            .await;
+            if let Some(config) = ctx.data.write().await.get_mut::<CommonConfigKey>() {
+                (*config).dont_spam = b
+            };
+        }
+        Err(_) => {
+            say(msg.channel_id, ctx, "Value invalid!").await;
+            return Ok(());
+        }
+    };
+    Ok(())
+}
+
+async fn say(channel: ChannelId, ctx: &Context, text: &str) {
+    check_msg(channel.say(&ctx.http, text).await)
+}
+
+async fn try_say(channel: ChannelId, ctx: &Context, text: &str) {
+    if let Some(config) = ctx.data.read().await.get::<CommonConfigKey>() {
+        if !config.dont_spam {
+            check_msg(channel.say(&ctx.http, text).await)
+        }
     }
 }
 
