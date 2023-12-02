@@ -1,14 +1,14 @@
 use serenity::{
     all::Message,
     client::Context,
-    framework::standard::{macros::command, Args, CommandResult},
+    framework::standard::{macros::command, CommandResult},
 };
 
 use crate::bot::common::{say, try_say};
 
 #[command]
 #[only_in(guilds)]
-async fn stop(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+async fn stop(ctx: &Context, msg: &Message) -> CommandResult {
     let guild_id = msg.guild_id.unwrap();
     let manager = songbird::get(ctx)
         .await
