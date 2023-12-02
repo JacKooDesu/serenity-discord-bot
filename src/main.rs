@@ -37,7 +37,12 @@ async fn main() {
     } else {
         println!("set token: {:?}", args[1].to_string());
         env::set_var(DISCORD_TOKEN_KEY, args[1].to_string());
-        env::set_var(YT_API_KEY, args[2].to_string());
+        if let Some(yt_key) = args.get(2) {
+            env::set_var(YT_API_KEY, yt_key.to_string());
+            println!("set youtube api key: {:?}", yt_key);
+        } else {
+            println!("Not set youtube api key!");
+        }
     }
 
     let token = match env::var(DISCORD_TOKEN_KEY) {
