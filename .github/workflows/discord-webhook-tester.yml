@@ -12,5 +12,6 @@ jobs:
       uses: tsickert/discord-webhook@v5.3.0
       with:
         webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        content: "## New build complete!"
+        content: "## New build job completed!"
+        embed-title: job#${{ github.run_id }}
         embed-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
