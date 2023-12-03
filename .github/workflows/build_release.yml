@@ -28,7 +28,7 @@ jobs:
         7z a "serenity-discord-bot.7z" serenity-discord-bot.exe
 
     - name: Upload archive
-    - uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v2
       with:
         name: serenity-discord-bot
         path: archive/serenity-discord-bot.7z
