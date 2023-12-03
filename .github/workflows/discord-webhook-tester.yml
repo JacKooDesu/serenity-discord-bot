@@ -1,0 +1,14 @@
+name: discord-webhook-tester
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Discord Notify
+      uses: tsickert/discord-webhook@v5.3.0
+      with:
+        webhook-url:: ${{ secrets.DISCORD_WEBHOOK_URL }}
