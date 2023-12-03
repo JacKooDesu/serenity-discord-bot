@@ -26,3 +26,4 @@ jobs:
         embed-author-name: ${{ github.repository }}
         embed-author-url: ${{ github.server_url }}/${{ github.repository }}
         embed-author-icon-url: "https://raw.githubusercontent.com/JacKooDesu/serenity-discord-bot/master/arts/bot-icon.png"
+        filename: .testFile
