@@ -32,3 +32,12 @@ jobs:
       with:
         name: serenity-discord-bot
         path: archive/serenity-discord-bot.7z
+
+    - name: Discord Notify
+      uses: th0th/notify-discord@v0.4.1
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        GITHUB_ACTOR: ${{ github.actor }}
+        GITHUB_JOB_NAME: "Build Complete!"
+        GITHUB_JOB_STATUS: ${{ job.status }}
+      
