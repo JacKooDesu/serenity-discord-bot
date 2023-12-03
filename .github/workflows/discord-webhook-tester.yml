@@ -8,10 +8,16 @@ jobs:
     runs-on: windows-latest
 
     steps:
+    - name: Create Test File
+      shell: bash
+      run: |
+        touch .testFile
+        echo "this is test file" >> .testFile
+
     - name: Discord Notify
       uses: tsickert/discord-webhook@v5.3.0
       with:
-        webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL_TESTING }}
         content: "### New build action completed!"
         embed-title: ${{ github.repository }} job#${{ github.run_id }}
         embed-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -20,3 +26,4 @@ jobs:
         embed-author-name: ${{ github.repository }}
         embed-author-url: ${{ github.server_url }}/${{ github.repository }}
         embed-author-icon-url: "https://raw.githubusercontent.com/JacKooDesu/serenity-discord-bot/master/arts/bot-icon.png"
+        filename: .testFile
