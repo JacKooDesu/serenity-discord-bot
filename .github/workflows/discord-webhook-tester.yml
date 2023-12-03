@@ -16,7 +16,7 @@ jobs:
         embed-title: "Action detail"
         embed-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         embed-description: job#${{ github.run_id }}
-        embed-color: "252, 94, 3"
+        embed-color: 16539139
         embed-timestamp: ${{ steps.date.outputs.date }}
         embed-author-name: ${{ github.repository }}
         embed-author-url: ${{ github.server_url }}/${{ github.repository }}
