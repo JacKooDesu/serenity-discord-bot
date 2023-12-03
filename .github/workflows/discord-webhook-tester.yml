@@ -16,5 +16,6 @@ jobs:
         embed-title: "Action detail"
         embed-description: job#${{ github.run_id }}
         embed-color: "252, 94, 3"
+        embed-timestamp: ${{ steps.date.outputs.date }}
         embed-author-icon-url: "https://raw.githubusercontent.com/JacKooDesu/serenity-discord-bot/master/arts/bot-icon.png"
         embed-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
