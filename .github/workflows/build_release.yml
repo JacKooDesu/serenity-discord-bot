@@ -36,10 +36,15 @@ jobs:
         path: archive/serenity-discord-bot.7z
 
     - name: Discord Notify
-      uses: th0th/notify-discord@v0.4.1
-      env:
-        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        GITHUB_ACTOR: ${{ github.actor }}
-        GITHUB_JOB_NAME: "Build Complete!"
-        GITHUB_JOB_STATUS: ${{ job.status }}
+      uses: tsickert/discord-webhook@v5.3.0
+      with:
+        webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        content: "### New build action completed!"
+        embed-title: ${{ github.workflow }} job#${{ github.run_id }}
+        embed-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        embed-description: ${{ github.event.head_commit.message }}
+        embed-color: 16539139
+        embed-author-name: ${{ github.repository }}
+        embed-author-url: ${{ github.server_url }}/${{ github.repository }}
+        embed-author-icon-url: "https://raw.githubusercontent.com/JacKooDesu/serenity-discord-bot/master/arts/bot-icon.png"
       

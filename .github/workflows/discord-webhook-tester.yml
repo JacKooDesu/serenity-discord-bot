@@ -15,7 +15,7 @@ jobs:
         content: "### New build action completed!"
         embed-title: ${{ github.repository }} job#${{ github.run_id }}
         embed-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        embed-description: ${{ github.event.head_commit.mesage }}
+        embed-description: ${{ github.event.head_commit.message }}
         embed-color: 16539139
         embed-author-name: ${{ github.repository }}
         embed-author-url: ${{ github.server_url }}/${{ github.repository }}
