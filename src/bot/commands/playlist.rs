@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::bot::common::{check_msg, get_manager, try_say, HttpKey, SongEndedNotifier, VolumeKey};
+use crate::bot::{
+    commands::play::create_song_begin_event,
+    common::{check_msg, get_manager, try_say, HttpKey, SongEndedNotifier, VolumeKey},
+};
 use serde::{Deserialize, Serialize};
 use serenity::{
     all::Message,
@@ -8,7 +11,7 @@ use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
     json,
 };
-use songbird::events::Event;
+use songbird::{events::Event, input::Compose};
 use songbird::{input::YoutubeDl, TrackEvent};
 
 #[command]
@@ -56,18 +59,14 @@ pub async fn playlist(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
         } else {
             let songs = flat_list(url.as_str()).await;
             for s in songs {
-                let src = YoutubeDl::new(http_client.clone(), s);
+                let mut src = YoutubeDl::new(http_client.clone(), s);
+                let metadata = src.aux_metadata().await;
                 let track = handler.enqueue_input(src.into()).await;
                 let _ = track.set_volume(volume);
 
-                let _ = track.add_event(
-                    Event::Track(TrackEvent::End),
-                    SongEndedNotifier {
-                        channel_id: channel_id,
-                        http: send_http.clone(),
-                        contex: Arc::new(ctx.clone()),
-                    },
-                );
+                if let Ok(meta) = metadata {
+                    create_song_begin_event(meta, send_http.clone(), track, channel_id).await;
+                }
             }
         }
     }
