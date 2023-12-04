@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::bot::common::{get_manager, SongBeginNotifier};
+use crate::bot::common::{get_manager, QueueKey, SongBeginNotifier};
 
 use super::super::common::{check_msg, say, try_say, HttpKey, SongEndedNotifier, VolumeKey};
 use reqwest::Client;
@@ -69,7 +69,17 @@ pub(super) async fn play(ctx: &Context, msg: &Message, mut args: Args) -> Comman
             let track = handler.enqueue_input(src.into()).await;
             let _ = track.set_volume(volume);
             if let Ok(meta) = metadata {
-                create_song_begin_event(meta, send_http, track, channel_id).await;
+                if let Some(vec) = ctx.data.write().await.get_mut::<QueueKey>() {
+                    create_song_begin_event(
+                        send_http,
+                        Arc::new(ctx.clone()),
+                        track,
+                        channel_id,
+                        vec.len(),
+                    )
+                    .await;
+                    vec.push_back(meta);
+                }
             }
             try_say(msg.channel_id, ctx, "Song Added!").await;
         }
@@ -81,19 +91,19 @@ pub(super) async fn play(ctx: &Context, msg: &Message, mut args: Args) -> Comman
 }
 
 pub(super) async fn create_song_begin_event(
-    meta: AuxMetadata,
     send_http: Arc<Http>,
+    ctx: Arc<Context>,
     track: TrackHandle,
     channel_id: ChannelId,
+    queue_id: usize,
 ) {
-    if let Some(title) = meta.title {
-        let _ = track.add_event(
-            Event::Track(TrackEvent::Play),
-            SongBeginNotifier {
-                channel_id: channel_id,
-                cache_http: send_http,
-                title: title,
-            },
-        );
-    }
+    let _ = track.add_event(
+        Event::Track(TrackEvent::Play),
+        SongBeginNotifier {
+            channel_id: channel_id,
+            cache_http: send_http,
+            contex: ctx,
+            queue_id,
+        },
+    );
 }

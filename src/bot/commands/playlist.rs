@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::bot::{
     commands::play::create_song_begin_event,
-    common::{check_msg, get_manager, try_say, HttpKey, SongEndedNotifier, VolumeKey},
+    common::{check_msg, get_manager, try_say, HttpKey, SongEndedNotifier, VolumeKey, QueueKey},
 };
 use serde::{Deserialize, Serialize};
 use serenity::{
@@ -65,7 +65,17 @@ pub async fn playlist(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
                 let _ = track.set_volume(volume);
 
                 if let Ok(meta) = metadata {
-                    create_song_begin_event(meta, send_http.clone(), track, channel_id).await;
+                    if let Some(vec) = ctx.data.write().await.get_mut::<QueueKey>() {
+                        create_song_begin_event(
+                            send_http.clone(),
+                            Arc::new(ctx.clone()),
+                            track,
+                            channel_id,
+                            vec.len(),
+                        )
+                        .await;
+                        vec.push_back(meta);
+                    }
                 }
             }
         }

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, collections::VecDeque};
 
 use serenity::{
     all::ChannelId,
@@ -11,11 +11,11 @@ use serenity::{
 };
 use songbird::{
     events::{Event, EventContext, EventHandler as VoiceEventHandler},
+    input::AuxMetadata,
     Songbird,
 };
 
 use reqwest::Client as HttpClient;
-use tracing_subscriber::fmt::format;
 
 pub struct HttpKey;
 impl TypeMapKey for HttpKey {
@@ -40,17 +40,28 @@ impl TypeMapKey for VolumeKey {
     type Value = f32;
 }
 
+pub struct QueueKey;
+impl TypeMapKey for QueueKey {
+    type Value = VecDeque<AuxMetadata>;
+}
+
 pub struct SongBeginNotifier {
     pub channel_id: ChannelId,
     pub cache_http: Arc<Http>,
-    pub title: String,
+    pub contex: Arc<Context>,
+    pub queue_id: usize,
 }
 #[async_trait]
 impl VoiceEventHandler for SongBeginNotifier {
     async fn act(&self, ctx: &EventContext<'_>) -> Option<Event> {
         if let EventContext::Track(_) = ctx {
-            let s = format!("🎶  Current Playing  🎶```{}```", self.title);
-            say(self.channel_id, self.cache_http.http(), s.as_str()).await;
+            if let Some(vec) = self.contex.data.write().await.get_mut::<QueueKey>() {
+                if let Some(title) = vec.get(0).and_then(|m| m.title.clone()) {
+                    let s = format!("🎶  Current Playing  🎶```{}```", title);
+                    say(self.channel_id, self.cache_http.http(), s.as_str()).await;
+                }
+                vec.pop_front();
+            }
         }
         None
     }

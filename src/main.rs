@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, collections::VecDeque};
 
 use serenity::{
     async_trait,
@@ -15,7 +15,7 @@ mod bot;
 use bot::{
     commands::search::*,
     commands::GENERAL_GROUP,
-    common::{create_config, CommonConfigKey, HttpKey, VolumeKey},
+    common::{create_config, CommonConfigKey, HttpKey, QueueKey, VolumeKey},
     constants::*,
 };
 
@@ -62,9 +62,8 @@ async fn main() {
         .type_map_insert::<HttpKey>(HttpClient::new())
         .type_map_insert::<VolumeKey>(1_f32)
         .type_map_insert::<CommonConfigKey>(config)
-        .type_map_insert::<YtHubKey>(
-            init_yt_hub("AIzaSyBRKrk1103KrPygaOu7kb8Yd-yBeowYgN4".to_string()).await,
-        )
+        .type_map_insert::<YtHubKey>(init_yt_hub("".to_string()).await)
+        .type_map_insert::<QueueKey>(VecDeque::new())
         .await
         .expect("Error on creating client");
 
