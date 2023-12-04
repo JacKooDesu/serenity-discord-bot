@@ -1,14 +1,21 @@
 use std::sync::Arc;
 
-use crate::bot::common::get_manager;
+use crate::bot::common::{get_manager, SongBeginNotifier};
 
 use super::super::common::{check_msg, say, try_say, HttpKey, SongEndedNotifier, VolumeKey};
+use reqwest::Client;
 use serenity::{
+    all::ChannelId,
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
+    http::Http,
     model::channel::Message,
 };
-use songbird::events::Event;
+use songbird::{
+    events::Event,
+    input::{AuxMetadata, Compose, Input},
+    tracks::TrackHandle,
+};
 use songbird::{input::YoutubeDl, TrackEvent};
 
 #[command]
@@ -57,23 +64,36 @@ pub(super) async fn play(ctx: &Context, msg: &Message, mut args: Args) -> Comman
             )
             .await;
         } else {
-            let src = YoutubeDl::new(http_client, url);
+            let mut src = YoutubeDl::new(http_client, url);
+            let metadata = src.aux_metadata().await;
             let track = handler.enqueue_input(src.into()).await;
             let _ = track.set_volume(volume);
-
-            let _ = track.add_event(
-                Event::Track(TrackEvent::End),
-                SongEndedNotifier {
-                    channel_id: channel_id,
-                    http: send_http,
-                    contex: Arc::new(ctx.clone()),
-                },
-            );
-            try_say(msg.channel_id, ctx, "Playing!").await;
+            if let Ok(meta) = metadata {
+                create_song_begin_event(meta, send_http, track, channel_id).await;
+            }
+            try_say(msg.channel_id, ctx, "Song Added!").await;
         }
     } else {
         say(msg.channel_id, ctx, "Not in voice channel!").await;
     }
 
     Ok(())
+}
+
+pub(super) async fn create_song_begin_event(
+    meta: AuxMetadata,
+    send_http: Arc<Http>,
+    track: TrackHandle,
+    channel_id: ChannelId,
+) {
+    if let Some(title) = meta.title {
+        let _ = track.add_event(
+            Event::Track(TrackEvent::Play),
+            SongBeginNotifier {
+                channel_id: channel_id,
+                cache_http: send_http,
+                title: title,
+            },
+        );
+    }
 }

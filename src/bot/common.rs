@@ -1,8 +1,13 @@
 use std::sync::Arc;
 
 use serenity::{
-    all::ChannelId, async_trait, client::Context, http::Http, model::channel::Message,
-    prelude::TypeMapKey, Result as SerenityResult,
+    all::ChannelId,
+    async_trait,
+    client::Context,
+    http::{CacheHttp, Http},
+    model::channel::Message,
+    prelude::TypeMapKey,
+    Result as SerenityResult,
 };
 use songbird::{
     events::{Event, EventContext, EventHandler as VoiceEventHandler},
@@ -10,6 +15,7 @@ use songbird::{
 };
 
 use reqwest::Client as HttpClient;
+use tracing_subscriber::fmt::format;
 
 pub struct HttpKey;
 impl TypeMapKey for HttpKey {
@@ -32,6 +38,22 @@ pub fn create_config(dont_spam: Option<bool>) -> CommonConfig {
 pub struct VolumeKey;
 impl TypeMapKey for VolumeKey {
     type Value = f32;
+}
+
+pub struct SongBeginNotifier {
+    pub channel_id: ChannelId,
+    pub cache_http: Arc<Http>,
+    pub title: String,
+}
+#[async_trait]
+impl VoiceEventHandler for SongBeginNotifier {
+    async fn act(&self, ctx: &EventContext<'_>) -> Option<Event> {
+        if let EventContext::Track(_) = ctx {
+            let s = format!("🎶  Current Playing  🎶```{}```", self.title);
+            say(self.channel_id, self.cache_http.http(), s.as_str()).await;
+        }
+        None
+    }
 }
 
 pub struct SongEndedNotifier {
@@ -80,8 +102,8 @@ impl VoiceEventHandler for TrackErrorNotifier {
     }
 }
 
-pub async fn say(channel: ChannelId, ctx: &Context, text: &str) {
-    check_msg(channel.say(&ctx.http, text).await)
+pub async fn say(channel: ChannelId, ctx: impl CacheHttp, text: &str) {
+    check_msg(channel.say(ctx, text).await)
 }
 
 pub async fn try_say(channel: ChannelId, ctx: &Context, text: &str) {
