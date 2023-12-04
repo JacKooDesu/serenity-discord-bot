@@ -1,4 +1,4 @@
-name: build-release
+name: build-release-linux
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ env:
 jobs:
   build:
 
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
