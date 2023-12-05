@@ -1,8 +1,9 @@
-use std::{sync::Arc, collections::VecDeque};
+use std::{collections::VecDeque, sync::Arc};
 
 use serenity::{
     all::ChannelId,
     async_trait,
+    builder::{CreateEmbed, CreateEmbedAuthor, CreateMessage},
     client::Context,
     http::{CacheHttp, Http},
     model::channel::Message,
@@ -56,9 +57,35 @@ impl VoiceEventHandler for SongBeginNotifier {
     async fn act(&self, ctx: &EventContext<'_>) -> Option<Event> {
         if let EventContext::Track(_) = ctx {
             if let Some(vec) = self.contex.data.write().await.get_mut::<QueueKey>() {
-                if let Some(title) = vec.get(0).and_then(|m| m.title.clone()) {
-                    let s = format!("🎶  Current Playing  🎶```{}```", title);
-                    say(self.channel_id, self.cache_http.http(), s.as_str()).await;
+                if let Some(metadata) = vec.get(0) {
+                    let mut embed = CreateEmbed::new();
+                    if let Some(title) = &metadata.title {
+                        embed = embed.title(title);
+                        if let Some(url) = &metadata.source_url {
+                            embed = embed.url(url);
+                        }
+                    }
+                    if let Some(thumbnail) = &metadata.thumbnail {
+                        embed = embed.thumbnail(thumbnail);
+                    }
+                    if let Some(channel) = &metadata.channel {
+                        let author = CreateEmbedAuthor::new(channel);
+                        embed = embed.author(author);
+                    }
+
+                    let mut builder = CreateMessage::new();
+                    builder = builder.content("🎶  Current Playing  🎶").embed(embed);
+                    let msg = self
+                        .channel_id
+                        .send_message(self.cache_http.http(), builder)
+                        .await;
+
+                    if let Err(_) = msg {
+                        if let Some(title) = &metadata.title {
+                            let s = format!("🎶  Current Playing  🎶```{}```", title);
+                            say(self.channel_id, self.cache_http.http(), s.as_str()).await;
+                        }
+                    }
                 }
                 vec.pop_front();
             }

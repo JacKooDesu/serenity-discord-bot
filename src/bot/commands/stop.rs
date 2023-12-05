@@ -4,7 +4,7 @@ use serenity::{
     framework::standard::{macros::command, CommandResult},
 };
 
-use crate::bot::common::{say, try_say};
+use crate::bot::common::{say, try_say, QueueKey};
 
 #[command]
 #[only_in(guilds)]
@@ -20,7 +20,11 @@ async fn stop(ctx: &Context, msg: &Message) -> CommandResult {
         let queue = handler.queue();
         queue.stop();
 
-        try_say(msg.channel_id, ctx, "Queue cleared!").await
+        try_say(msg.channel_id, ctx, "Queue cleared!").await;
+
+        if let Some(vec) = ctx.data.write().await.get_mut::<QueueKey>() {
+            vec.clear()
+        }
     } else {
         say(msg.channel_id, ctx, "Not in voice channel!").await
     }
