@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::bot::{
     commands::play::create_song_begin_event,
-    common::{check_msg, get_manager, try_say, HttpKey, SongEndedNotifier, VolumeKey, QueueKey},
+    common::{add_song, check_msg, try_say, HttpKey},
 };
 use serde::{Deserialize, Serialize};
 use serenity::{
@@ -11,8 +11,8 @@ use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
     json,
 };
-use songbird::{events::Event, input::Compose};
-use songbird::{input::YoutubeDl, TrackEvent};
+
+use songbird::input::YoutubeDl;
 
 #[command]
 pub async fn playlist(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
@@ -30,55 +30,43 @@ pub async fn playlist(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
     }
     let guild_id = msg.guild_id.unwrap();
     println!("try playlist: {:?}", &url);
-    let (http_client, volume) = {
+    let http_client = {
         let data = ctx.data.read().await;
         let http_client = data
             .get::<HttpKey>()
             .cloned()
             .expect("Guaranteed to exist in the typemap.");
 
-        let volume = data.get::<VolumeKey>().cloned().unwrap_or(1_f32);
-
-        (http_client, volume)
+        http_client
     };
-    let manager = get_manager(ctx).await;
 
-    if let Some(handler_lock) = manager.get(guild_id) {
-        let mut handler = handler_lock.lock().await;
+    let channel_id = msg.channel_id;
+    let send_http = ctx.http.clone();
 
-        let channel_id = msg.channel_id;
-        let send_http = ctx.http.clone();
-
-        if !url.contains("list") {
-            try_say(
-                msg.channel_id,
-                ctx,
-                "Song can only played by using `play` command!",
-            )
-            .await;
-        } else {
-            let songs = flat_list(url.as_str()).await;
-            for s in songs {
-                let mut src = YoutubeDl::new(http_client.clone(), s);
-                let metadata = src.aux_metadata().await;
-                let track = handler.enqueue_input(src.into()).await;
-                let _ = track.set_volume(volume);
-
-                if let Ok(meta) = metadata {
-                    if let Some(vec) = ctx.data.write().await.get_mut::<QueueKey>() {
-                        create_song_begin_event(
-                            send_http.clone(),
-                            Arc::new(ctx.clone()),
-                            track,
-                            channel_id,
-                            vec.len(),
-                        )
-                        .await;
-                        vec.push_back(meta);
-                    }
+    if !url.contains("list") {
+        try_say(
+            msg.channel_id,
+            ctx,
+            "Song can only played by using `play` command!",
+        )
+        .await;
+    } else {
+        let songs = flat_list(url.as_str()).await;
+        for s in songs {
+            let src = YoutubeDl::new(http_client.clone(), s);
+            if let Some(result) = add_song(ctx, guild_id, src).await {
+                if let Some(_) = result.1 {
+                    create_song_begin_event(
+                        send_http.clone(),
+                        Arc::new(ctx.clone()),
+                        result.0,
+                        channel_id,
+                    )
+                    .await;
                 }
             }
         }
+        try_say(channel_id, ctx, "Playlist added!").await;
     }
 
     Ok(())

@@ -1,7 +1,7 @@
 use std::{collections::VecDeque, sync::Arc};
 
 use serenity::{
-    all::ChannelId,
+    all::{ChannelId, GuildId},
     async_trait,
     builder::{CreateEmbed, CreateEmbedAuthor, CreateMessage},
     client::Context,
@@ -12,7 +12,8 @@ use serenity::{
 };
 use songbird::{
     events::{Event, EventContext, EventHandler as VoiceEventHandler},
-    input::AuxMetadata,
+    input::{AuxMetadata, Compose, Input},
+    tracks::TrackHandle,
     Songbird,
 };
 
@@ -50,7 +51,7 @@ pub struct SongBeginNotifier {
     pub channel_id: ChannelId,
     pub cache_http: Arc<Http>,
     pub contex: Arc<Context>,
-    pub queue_id: usize,
+    // pub queue_id: usize,
 }
 #[async_trait]
 impl VoiceEventHandler for SongBeginNotifier {
@@ -138,6 +139,32 @@ impl VoiceEventHandler for TrackErrorNotifier {
 
         None
     }
+}
+
+pub async fn add_song(
+    ctx: &Context,
+    guild_id: GuildId,
+    mut input: impl Into<Input> + Compose,
+) -> Option<(TrackHandle, Option<AuxMetadata>)> {
+    let manager = get_manager(ctx).await;
+    if let Some(handler_lock) = manager.get(guild_id) {
+        let mut handler = handler_lock.lock().await;
+        let metadata = input.aux_metadata().await;
+        let track = handler.enqueue_input(input.into()).await;
+
+        if let Some(volume) = ctx.data.read().await.get::<VolumeKey>() {
+            let _ = track.set_volume(volume.clone());
+        }
+
+        if let Ok(meta) = metadata {
+            if let Some(vec) = ctx.data.write().await.get_mut::<QueueKey>() {
+                vec.push_back(meta.clone());
+                return Some((track, Some(meta)));
+            }
+        }
+        return Some((track, None));
+    }
+    None
 }
 
 pub async fn say(channel: ChannelId, ctx: impl CacheHttp, text: &str) {
