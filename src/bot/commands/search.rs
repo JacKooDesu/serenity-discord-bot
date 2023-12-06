@@ -115,8 +115,7 @@ impl TypeMapKey for YtHubKey {
     type Value = YouTube<HttpsConnector<HttpConnector>>;
 }
 
-pub async fn init_yt_hub(token: String) -> YouTube<HttpsConnector<HttpConnector>> {
-    env::set_var(YT_API_KEY, token);
+pub async fn init_yt_hub() -> YouTube<HttpsConnector<HttpConnector>> {
     YouTube::new(
         hyper::Client::builder().build(
             hyper_rustls::HttpsConnectorBuilder::new()

@@ -62,7 +62,7 @@ async fn main() {
         .type_map_insert::<HttpKey>(HttpClient::new())
         .type_map_insert::<VolumeKey>(1_f32)
         .type_map_insert::<CommonConfigKey>(config)
-        .type_map_insert::<YtHubKey>(init_yt_hub("".to_string()).await)
+        .type_map_insert::<YtHubKey>(init_yt_hub().await)
         .type_map_insert::<QueueKey>(VecDeque::new())
         .await
         .expect("Error on creating client");
