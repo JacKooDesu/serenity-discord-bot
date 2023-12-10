@@ -19,6 +19,8 @@ use bot::{
     constants::*,
 };
 
+use crate::bot::commands::yt_music_search::{YtClientKey, init_yt_client};
+
 struct Handler;
 #[async_trait]
 impl EventHandler for Handler {
@@ -63,6 +65,7 @@ async fn main() {
         .type_map_insert::<VolumeKey>(1_f32)
         .type_map_insert::<CommonConfigKey>(config)
         .type_map_insert::<YtHubKey>(init_yt_hub().await)
+        .type_map_insert::<YtClientKey>(init_yt_client().await)
         .type_map_insert::<QueueKey>(VecDeque::new())
         .await
         .expect("Error on creating client");

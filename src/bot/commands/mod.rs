@@ -9,6 +9,7 @@ pub mod search;
 pub mod set_volume;
 pub mod skip;
 pub mod stop;
+pub mod yt_music_search;
 
 use join::JOIN_COMMAND;
 use ping::PING_COMMAND;
@@ -19,7 +20,10 @@ use search::SEARCH_COMMAND;
 use set_volume::SET_VOLUME_COMMAND;
 use skip::SKIP_COMMAND;
 use stop::STOP_COMMAND;
+use yt_music_search::ARTIST_COMMAND;
 
 #[group]
-#[commands(play, ping, join, skip, set_volume, stop, search, playlist, queue)]
+#[commands(
+    play, ping, join, skip, set_volume, stop, search, playlist, queue, artist
+)]
 pub struct General;

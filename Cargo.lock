@@ -816,6 +816,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "http_req"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42ce34c74ec562d68f2c23a532c62c1332ff1d1b6147fd118bd1938e090137d0"
+dependencies = [
+ "native-tls",
+ "unicase",
+]
+
+[[package]]
 name = "httparse"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -958,6 +968,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a0c10553d664a4d0bcff9f4215d0aac67a639cc68ef660840afe309b807bc9f5"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "invidious"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "150da7a61c4427da20889d80b26ac1c8c1e0ae6653364f01b4751f9d784fbf32"
+dependencies = [
+ "async-trait",
+ "http_req",
+ "reqwest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2018,6 +2041,7 @@ name = "serenity-discord-bot"
 version = "0.1.0"
 dependencies = [
  "google-youtube3",
+ "invidious",
  "reqwest",
  "serde",
  "serenity",
