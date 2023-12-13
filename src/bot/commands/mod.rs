@@ -9,7 +9,7 @@ pub mod search;
 pub mod set_volume;
 pub mod skip;
 pub mod stop;
-pub mod yt_music_search;
+pub mod artist;
 
 use join::JOIN_COMMAND;
 use ping::PING_COMMAND;
@@ -20,7 +20,7 @@ use search::SEARCH_COMMAND;
 use set_volume::SET_VOLUME_COMMAND;
 use skip::SKIP_COMMAND;
 use stop::STOP_COMMAND;
-use yt_music_search::ARTIST_COMMAND;
+use artist::ARTIST_COMMAND;
 
 #[group]
 #[commands(

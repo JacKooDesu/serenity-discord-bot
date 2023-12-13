@@ -19,7 +19,7 @@ use bot::{
     constants::*,
 };
 
-use crate::bot::commands::yt_music_search::{init_yt_client, YtClientKey};
+use crate::bot::commands::artist::{init_yt_client, YtClientKey};
 
 struct Handler;
 #[async_trait]
