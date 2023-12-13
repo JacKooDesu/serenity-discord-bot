@@ -1,9 +1,9 @@
-use std::{env, collections::VecDeque};
+use std::{collections::VecDeque, env};
 
 use serenity::{
     async_trait,
     client::{Context, EventHandler},
-    framework::StandardFramework,
+    framework::{standard::Configuration, StandardFramework},
     model::gateway::Ready,
     prelude::GatewayIntents,
 };
@@ -19,7 +19,7 @@ use bot::{
     constants::*,
 };
 
-use crate::bot::commands::yt_music_search::{YtClientKey, init_yt_client};
+use crate::bot::commands::yt_music_search::{init_yt_client, YtClientKey};
 
 struct Handler;
 #[async_trait]
@@ -31,20 +31,13 @@ impl EventHandler for Handler {
 
 #[tokio::main]
 async fn main() {
+    env_init();
+
     tracing_subscriber::fmt::init();
+
     let framework = StandardFramework::new().group(&GENERAL_GROUP);
-    let args: Vec<_> = env::args().collect();
-    if let 1 = args.len() {
-        ();
-    } else {
-        println!("set token: {:?}", args[1].to_string());
-        env::set_var(DISCORD_TOKEN_KEY, args[1].to_string());
-        if let Some(yt_key) = args.get(2) {
-            env::set_var(YT_API_KEY, yt_key.to_string());
-            println!("set youtube api key: {:?}", yt_key);
-        } else {
-            println!("Not set youtube api key!");
-        }
+    if let Ok(prefix) = env::var(COMMAND_PREFIX_KEY) {
+        framework.configure(Configuration::new().prefix(prefix.as_str()))
     }
 
     let token = match env::var(DISCORD_TOKEN_KEY) {
@@ -75,4 +68,23 @@ async fn main() {
     });
     let _signal_err = tokio::signal::ctrl_c().await;
     println!("client stopped!");
+}
+
+fn env_init() {
+    #[cfg(not(debug_assertions))]
+    if let Err(err) = dotenv::dotenv() {
+        panic!("dotenv initialized failed!!\n{}", err)
+    }
+
+    for key in REQUIRED_KEYS {
+        if let Err(_) = env::var(key) {
+            panic!("required key missing `{}`!!", key);
+        }
+    }
+
+    for key in OPTIONAL_KEYS {
+        if let Err(_) = env::var(key) {
+            println!("optional key `{}` not found!!", key)
+        }
+    }
 }

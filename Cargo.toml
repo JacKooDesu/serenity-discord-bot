@@ -16,6 +16,7 @@ tracing-subscriber = "0.2"
 tracing-futures = "0.2"
 serde = "*"
 async-recursion = "1.0.5"
+dotenv = "0.15.0"
 
 
 [dependencies.serenity]
