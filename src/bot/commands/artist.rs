@@ -15,6 +15,7 @@ use songbird::{input::YoutubeDl, typemap::TypeMapKey};
 use crate::bot::{
     common::{add_song, say, try_say, HttpKey},
     constants::{BACK_EMOJI, INVIDIOUS_INSTANCE_KEY, NEXT_EMOJI, NUM_EMOJI, REGION_KEY},
+    utils::reaction_collector::{ActionEnumTrait, ReactionCollector},
 };
 
 use super::play::create_song_begin_event;
@@ -129,7 +130,7 @@ async fn explore_videos(
             Some(NextAction::ExploreVideos(id, page)) => {
                 explore_videos(ctx, msg, user, id.as_str(), page, Some(videos)).await;
             }
-            None => (),
+            _ => (),
         }
     };
     Some(())
@@ -161,43 +162,6 @@ async fn selected_video(ctx: &Context, msg: Message, id: &str) {
     }
 }
 
-pub struct ReactionCollector<'a> {
-    pub(self) action_map: HashMap<&'a str, NextAction>,
-}
-
-impl<'a> ReactionCollector<'a> {
-    pub(self) fn create(map: HashMap<&'a str, NextAction>) -> Self {
-        let x = ReactionCollector { action_map: map };
-        x
-    }
-
-    pub(self) fn add_action(mut self, s: &'a str, action: NextAction) -> Self {
-        self.action_map.insert(s, action);
-        self
-    }
-
-    async fn wait_reaction(self, user: &User, msg: Message, ctx: &Context) -> Option<NextAction> {
-        for (reaction, _) in &self.action_map {
-            let _ = msg
-                .react(ctx, ReactionType::Unicode(reaction.to_string()))
-                .await;
-        }
-
-        let collector = msg
-            .await_reaction(&ctx.shard)
-            .timeout(Duration::from_secs(10_u64))
-            .author_id(user.id);
-
-        let reaction = collector.await;
-        if let Some(ReactionType::Unicode(emoji)) = reaction.map(|x| x.emoji) {
-            if let Some(action) = self.action_map.get(emoji.as_str()).cloned() {
-                return Some(action);
-            }
-        }
-        None
-    }
-}
-
 pub async fn init_yt_client() -> YtClient {
     if let Ok(instance) = env::var(INVIDIOUS_INSTANCE_KEY) {
         YtClient::new(instance, invidious::MethodAsync::default())
@@ -207,9 +171,16 @@ pub async fn init_yt_client() -> YtClient {
 }
 
 #[derive(Clone)]
-enum NextAction {
+pub(crate) enum NextAction {
     ExploreVideos(String, usize),
     Finished(String), // Error(String),
+    Error,
+}
+
+impl ActionEnumTrait for NextAction {
+    fn fallback_action() -> Self {
+        NextAction::Error
+    }
 }
 
 pub struct YtClientKey {}
