@@ -15,6 +15,7 @@ use songbird::{input::YoutubeDl, typemap::TypeMapKey};
 use crate::bot::{
     common::{add_song, say, try_say, HttpKey},
     constants::{BACK_EMOJI, INVIDIOUS_INSTANCE_KEY, NEXT_EMOJI, NUM_EMOJI, REGION_KEY},
+    utils::reaction_collector::{ActionEnumTrait, ReactionCollector},
 };
 
 use super::play::create_song_begin_event;
@@ -29,7 +30,7 @@ pub async fn artist(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     }
 
     let mut msg_builder = CreateMessage::new().content("Artist Founded!");
-    let mut action_map = HashMap::new();
+    let mut action_map = Vec::new();
     if let Some(yt_client) = ctx.data.read().await.get::<YtClientKey>() {
         let mut param = format!("type=channel&q={}", args.message());
         if let Ok(region) = env::var(REGION_KEY) {
@@ -44,7 +45,7 @@ pub async fn artist(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                 if let Some(item) = embed.to_embed() {
                     msg_builder = msg_builder.add_embed(item);
                     if let Some(channel) = embed.item {
-                        action_map.insert(NUM_EMOJI[i], NextAction::ExploreVideos(channel.id, 0));
+                        action_map.push((NUM_EMOJI[i], NextAction::ExploreVideos(channel.id, 0)));
                     }
                 }
             }
@@ -80,7 +81,7 @@ async fn explore_videos(
 ) -> Option<()> {
     const PAGE_SIZE: usize = 5;
     let mut msg_builder = EditMessage::new().content("").embeds(Vec::new());
-    let mut action_map = HashMap::new();
+    let mut action_map = Vec::new();
     let videos: Vec<CommonVideo> = if let Some(_buffer) = buffer {
         _buffer
     } else if let Some(yt_client) = ctx.data.read().await.get::<YtClientKey>() {
@@ -93,20 +94,6 @@ async fn explore_videos(
         Vec::new()
     };
 
-    if (offset + PAGE_SIZE) < videos.len() {
-        action_map.insert(
-            NEXT_EMOJI,
-            NextAction::ExploreVideos(id.to_string(), offset + PAGE_SIZE),
-        );
-    }
-
-    if offset >= PAGE_SIZE {
-        action_map.insert(
-            BACK_EMOJI,
-            NextAction::ExploreVideos(id.to_string(), offset - PAGE_SIZE),
-        );
-    }
-
     let len = usize::min(videos.len() - offset, PAGE_SIZE);
 
     for i in 0..len {
@@ -116,10 +103,28 @@ async fn explore_videos(
             item = item.author(CreateEmbedAuthor::new(NUM_EMOJI[i]));
             msg_builder = msg_builder.add_embed(item);
             if let Some(x) = embed.item {
-                action_map.insert(NUM_EMOJI[i], NextAction::Finished(x.id));
+                action_map.push((NUM_EMOJI[i], NextAction::Finished(x.id)));
             }
         }
     }
+
+    if (offset + PAGE_SIZE) < videos.len() {
+        action_map.push((
+            NEXT_EMOJI,
+            NextAction::ExploreVideos(id.to_string(), offset + PAGE_SIZE),
+        ));
+    }
+
+    if offset >= PAGE_SIZE {
+        action_map.insert(
+            0,
+            (
+                BACK_EMOJI,
+                NextAction::ExploreVideos(id.to_string(), offset - PAGE_SIZE),
+            ),
+        );
+    }
+
     let _ = msg.delete_reactions(ctx).await;
 
     if let Ok(_) = msg.clone().edit(ctx, msg_builder).await {
@@ -129,7 +134,7 @@ async fn explore_videos(
             Some(NextAction::ExploreVideos(id, page)) => {
                 explore_videos(ctx, msg, user, id.as_str(), page, Some(videos)).await;
             }
-            None => (),
+            _ => (),
         }
     };
     Some(())
@@ -161,43 +166,6 @@ async fn selected_video(ctx: &Context, msg: Message, id: &str) {
     }
 }
 
-pub struct ReactionCollector<'a> {
-    pub(self) action_map: HashMap<&'a str, NextAction>,
-}
-
-impl<'a> ReactionCollector<'a> {
-    pub(self) fn create(map: HashMap<&'a str, NextAction>) -> Self {
-        let x = ReactionCollector { action_map: map };
-        x
-    }
-
-    pub(self) fn add_action(mut self, s: &'a str, action: NextAction) -> Self {
-        self.action_map.insert(s, action);
-        self
-    }
-
-    async fn wait_reaction(self, user: &User, msg: Message, ctx: &Context) -> Option<NextAction> {
-        for (reaction, _) in &self.action_map {
-            let _ = msg
-                .react(ctx, ReactionType::Unicode(reaction.to_string()))
-                .await;
-        }
-
-        let collector = msg
-            .await_reaction(&ctx.shard)
-            .timeout(Duration::from_secs(10_u64))
-            .author_id(user.id);
-
-        let reaction = collector.await;
-        if let Some(ReactionType::Unicode(emoji)) = reaction.map(|x| x.emoji) {
-            if let Some(action) = self.action_map.get(emoji.as_str()).cloned() {
-                return Some(action);
-            }
-        }
-        None
-    }
-}
-
 pub async fn init_yt_client() -> YtClient {
     if let Ok(instance) = env::var(INVIDIOUS_INSTANCE_KEY) {
         YtClient::new(instance, invidious::MethodAsync::default())
@@ -207,9 +175,16 @@ pub async fn init_yt_client() -> YtClient {
 }
 
 #[derive(Clone)]
-enum NextAction {
+pub(crate) enum NextAction {
     ExploreVideos(String, usize),
     Finished(String), // Error(String),
+    Error,
+}
+
+impl ActionEnumTrait for NextAction {
+    fn fallback_action() -> Self {
+        NextAction::Error
+    }
 }
 
 pub struct YtClientKey {}
