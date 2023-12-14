@@ -30,7 +30,7 @@ pub async fn artist(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     }
 
     let mut msg_builder = CreateMessage::new().content("Artist Founded!");
-    let mut action_map = HashMap::new();
+    let mut action_map = Vec::new();
     if let Some(yt_client) = ctx.data.read().await.get::<YtClientKey>() {
         let mut param = format!("type=channel&q={}", args.message());
         if let Ok(region) = env::var(REGION_KEY) {
@@ -45,7 +45,7 @@ pub async fn artist(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
                 if let Some(item) = embed.to_embed() {
                     msg_builder = msg_builder.add_embed(item);
                     if let Some(channel) = embed.item {
-                        action_map.insert(NUM_EMOJI[i], NextAction::ExploreVideos(channel.id, 0));
+                        action_map.push((NUM_EMOJI[i], NextAction::ExploreVideos(channel.id, 0)));
                     }
                 }
             }
@@ -81,7 +81,7 @@ async fn explore_videos(
 ) -> Option<()> {
     const PAGE_SIZE: usize = 5;
     let mut msg_builder = EditMessage::new().content("").embeds(Vec::new());
-    let mut action_map = HashMap::new();
+    let mut action_map = Vec::new();
     let videos: Vec<CommonVideo> = if let Some(_buffer) = buffer {
         _buffer
     } else if let Some(yt_client) = ctx.data.read().await.get::<YtClientKey>() {
@@ -94,20 +94,6 @@ async fn explore_videos(
         Vec::new()
     };
 
-    if (offset + PAGE_SIZE) < videos.len() {
-        action_map.insert(
-            NEXT_EMOJI,
-            NextAction::ExploreVideos(id.to_string(), offset + PAGE_SIZE),
-        );
-    }
-
-    if offset >= PAGE_SIZE {
-        action_map.insert(
-            BACK_EMOJI,
-            NextAction::ExploreVideos(id.to_string(), offset - PAGE_SIZE),
-        );
-    }
-
     let len = usize::min(videos.len() - offset, PAGE_SIZE);
 
     for i in 0..len {
@@ -117,10 +103,28 @@ async fn explore_videos(
             item = item.author(CreateEmbedAuthor::new(NUM_EMOJI[i]));
             msg_builder = msg_builder.add_embed(item);
             if let Some(x) = embed.item {
-                action_map.insert(NUM_EMOJI[i], NextAction::Finished(x.id));
+                action_map.push((NUM_EMOJI[i], NextAction::Finished(x.id)));
             }
         }
     }
+
+    if (offset + PAGE_SIZE) < videos.len() {
+        action_map.push((
+            NEXT_EMOJI,
+            NextAction::ExploreVideos(id.to_string(), offset + PAGE_SIZE),
+        ));
+    }
+
+    if offset >= PAGE_SIZE {
+        action_map.insert(
+            0,
+            (
+                BACK_EMOJI,
+                NextAction::ExploreVideos(id.to_string(), offset - PAGE_SIZE),
+            ),
+        );
+    }
+
     let _ = msg.delete_reactions(ctx).await;
 
     if let Ok(_) = msg.clone().edit(ctx, msg_builder).await {
