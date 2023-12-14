@@ -25,9 +25,11 @@ jobs:
       shell: bash
       run: |
         mkdir archive
+        cp env-template.env archive/
         cd archive
+        mv env-template.env .env
         cp "../target/release/serenity-discord-bot.exe" ./
-        7z a "serenity-discord-bot.7z" serenity-discord-bot.exe
+        7z a "serenity-discord-bot.7z" serenity-discord-bot.exe .env
 
     - name: Upload archive
       uses: actions/upload-artifact@v2

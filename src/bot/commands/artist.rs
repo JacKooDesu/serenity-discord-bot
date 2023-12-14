@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, env, sync::Arc, time::Duration};
 
 use async_recursion::async_recursion;
 use invidious::{
@@ -14,7 +14,7 @@ use songbird::{input::YoutubeDl, typemap::TypeMapKey};
 
 use crate::bot::{
     common::{add_song, say, try_say, HttpKey},
-    constants::{BACK_EMOJI, NEXT_EMOJI, NUM_EMOJI},
+    constants::{BACK_EMOJI, INVIDIOUS_INSTANCE_KEY, NEXT_EMOJI, NUM_EMOJI, REGION_KEY},
 };
 
 use super::play::create_song_begin_event;
@@ -31,7 +31,10 @@ pub async fn artist(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let mut msg_builder = CreateMessage::new().content("Artist Founded!");
     let mut action_map = HashMap::new();
     if let Some(yt_client) = ctx.data.read().await.get::<YtClientKey>() {
-        let param = format!("type=channel&q={}", args.message());
+        let mut param = format!("type=channel&q={}", args.message());
+        if let Ok(region) = env::var(REGION_KEY) {
+            let _ = &param.push_str(format!("&region={}", region).as_str());
+        }
         if let Ok(result) = yt_client.search(Some(param.as_str())).await {
             let len = usize::min(result.items.len(), ARTIST_RESULT_LEN);
 
@@ -173,12 +176,7 @@ impl<'a> ReactionCollector<'a> {
         self
     }
 
-    async fn wait_reaction(
-        self,
-        user: &User,
-        msg: Message,
-        ctx: &Context,
-    ) -> Option<NextAction> {
+    async fn wait_reaction(self, user: &User, msg: Message, ctx: &Context) -> Option<NextAction> {
         for (reaction, _) in &self.action_map {
             let _ = msg
                 .react(ctx, ReactionType::Unicode(reaction.to_string()))
@@ -201,7 +199,11 @@ impl<'a> ReactionCollector<'a> {
 }
 
 pub async fn init_yt_client() -> YtClient {
-    YtClient::default()
+    if let Ok(instance) = env::var(INVIDIOUS_INSTANCE_KEY) {
+        YtClient::new(instance, invidious::MethodAsync::default())
+    } else {
+        YtClient::default()
+    }
 }
 
 #[derive(Clone)]
@@ -256,7 +258,11 @@ impl EmbedCreator for PrettyChannel {
         if let Some(target) = &self.item {
             let mut embed = CreateEmbed::new();
             if let Some(thumbnail) = &target.thumbnails.last() {
-                embed = embed.thumbnail(format!("https:{}", thumbnail.url));
+                let mut url = thumbnail.url.clone();
+                if !url.starts_with("https:") {
+                    url.insert_str(0, "https:");
+                }
+                embed = embed.thumbnail(url);
             } else {
                 // todo: add github fallback image
                 const FALLBACK: &str = "";
@@ -264,7 +270,7 @@ impl EmbedCreator for PrettyChannel {
             }
             embed = embed.title(&target.name);
             embed = embed.url(format!("http://youtube.com{}", &target.url));
-            embed = embed.description(&target.description);
+            embed = embed.description(&target.description_html);
 
             return Some(embed);
         }
