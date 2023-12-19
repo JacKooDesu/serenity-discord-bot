@@ -211,11 +211,11 @@ impl TypeMapKey for YtClientKey {
 }
 
 pub struct PrettyChannel {
-    item: Option<CommonChannel>,
+    pub item: Option<CommonChannel>,
 }
 
 pub struct PrettyVideo {
-    item: Option<CommonVideo>,
+    pub item: Option<CommonVideo>,
 }
 
 pub trait EmbedCreator {

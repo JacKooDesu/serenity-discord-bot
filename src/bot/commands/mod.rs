@@ -1,5 +1,7 @@
 use serenity::framework::standard::macros::group;
 
+pub mod artist;
+pub mod album;
 pub mod join;
 pub mod ping;
 pub mod play;
@@ -9,8 +11,9 @@ pub mod search;
 pub mod set_volume;
 pub mod skip;
 pub mod stop;
-pub mod artist;
 
+use artist::ARTIST_COMMAND;
+use album::ALBUM_COMMAND;
 use join::JOIN_COMMAND;
 use ping::PING_COMMAND;
 use play::PLAY_COMMAND;
@@ -20,10 +23,19 @@ use search::SEARCH_COMMAND;
 use set_volume::SET_VOLUME_COMMAND;
 use skip::SKIP_COMMAND;
 use stop::STOP_COMMAND;
-use artist::ARTIST_COMMAND;
 
 #[group]
 #[commands(
-    play, ping, join, skip, set_volume, stop, search, playlist, queue, artist
+    play,
+    ping,
+    join,
+    skip,
+    set_volume,
+    stop,
+    search,
+    playlist,
+    queue,
+    artist,
+    album
 )]
 pub struct General;
