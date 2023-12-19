@@ -11,6 +11,7 @@ use serenity::{
     framework::standard::{macros::command, Args, CommandResult},
 };
 use songbird::{input::YoutubeDl, typemap::TypeMapKey};
+use tracing_subscriber::fmt::format::Pretty;
 
 use crate::bot::{
     common::{add_song, say, try_say, HttpKey},
@@ -31,28 +32,20 @@ pub async fn artist(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     let mut msg_builder = CreateMessage::new().content("Artist Founded!");
     let mut action_map = Vec::new();
-    if let Some(yt_client) = ctx.data.read().await.get::<YtClientKey>() {
-        let mut param = format!("type=channel&q={}", args.message());
-        if let Ok(region) = env::var(REGION_KEY) {
-            let _ = &param.push_str(format!("&region={}", region).as_str());
-        }
-        if let Ok(result) = yt_client.search(Some(param.as_str())).await {
-            let len = usize::min(result.items.len(), ARTIST_RESULT_LEN);
 
-            for i in 0..len {
-                let origin = result.items.get(i);
-                let embed = PrettyChannel::new(origin.cloned());
-                if let Some(item) = embed.to_embed() {
-                    msg_builder = msg_builder.add_embed(item);
-                    if let Some(channel) = embed.item {
-                        action_map.push((NUM_EMOJI[i], NextAction::ExploreVideos(channel.id, 0)));
-                    }
+    if let Some(channels) = find_artist(ctx, args).await {
+        let mut iter = 0;
+        for channel in channels {
+            if let Some(embed) = channel.to_embed() {
+                msg_builder = msg_builder.add_embed(embed);
+                if let Some(channel) = channel.item {
+                    action_map.push((NUM_EMOJI[iter], NextAction::ExploreVideos(channel.id, 0)));
+                    iter += 1;
                 }
             }
-            // msg_builder = msg_builder.content(format!("Founded {} artists", len));
-        } else {
-            msg_builder = msg_builder.content("Cannot call search api!");
         }
+    } else {
+        msg_builder = msg_builder.content("Cannot call search api!");
     }
 
     if let Ok(reply) = msg.channel_id.send_message(ctx, msg_builder).await {
@@ -68,6 +61,31 @@ pub async fn artist(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         };
     }
     Ok(())
+}
+
+pub(in crate::bot::commands) async fn find_artist(
+    ctx: &Context,
+    args: Args,
+) -> Option<Vec<PrettyChannel>> {
+    if let Some(yt_client) = ctx.data.read().await.get::<YtClientKey>() {
+        let mut param = format!("type=channel&q={}", args.message());
+        if let Ok(region) = env::var(REGION_KEY) {
+            let _ = &param.push_str(format!("&region={}", region).as_str());
+        }
+        if let Ok(result) = yt_client.search(Some(param.as_str())).await {
+            let mut vec = Vec::new();
+            let len = usize::min(result.items.len(), ARTIST_RESULT_LEN);
+            for i in 0..len {
+                let origin = result.items.get(i);
+                vec.push(PrettyChannel::new(origin.cloned()));
+            }
+            return Some(vec);
+        } else {
+            return None;
+        }
+    }
+
+    None
 }
 
 #[async_recursion]
