@@ -2,7 +2,17 @@
 
 ## 註冊 Hax / Woiden
 
-Note: 需先擁有 Telegram 帳號
+Note1: 需先擁有 Telegram 帳號
+
+Note2: 使用時盡量將 AdBlocker 關閉，支持無收費的 VPS 服務
+
+1. 選擇 `Create VPS`，OS 可使用 `Debian`/`Ubuntu`
+
+2. 完成人機驗證後至 `VPS Status` 等待開機
+
+3. `Status` 顯示 `Online` 就能用 [`Web Terminal`](https://ssh.hax.co.id/) 連入
+
+4. 輸入 `IP`/`密碼` 後連入
 
 ## 使用 Web Terminal 安裝 Warp
 
@@ -24,15 +34,17 @@ wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh
 
 1. 安裝 [Remote SSH](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-ssh)
 
-2. 連入
+2. vs code command 選擇連入
 
-    ```bash
-    > ssh connect
-    ```
+   ```bash
+   > ssh connect
+   ```
 
-    輸入 ipv6 位址
+   輸入 `IPv6` 位址，並輸入密碼
 
 ## 下載/上傳 Bot Binary
+
+`TODO: Add download command after release`
 
 ## 安裝 YT-DLP
 
@@ -54,7 +66,7 @@ wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh
    yt-dlp --help
    ```
 
-- Note: hax/woiden 環境本來就是 root，無須再指令前增加 `sudo`
+- Note: hax/woiden 環境本來就是 root，無須增加 `sudo`
 
 ## 使用 Screen 背景開啟
 
@@ -66,4 +78,4 @@ screen
 exec ./senerity-discord-bot
 ```
 
-- Note: `Ctrl + A` -> `D` 離開當前 Screen
+- Note: `Ctrl + A` → `D` 離開當前 Screen
