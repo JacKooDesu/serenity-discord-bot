@@ -1,37 +1,149 @@
+use async_recursion::async_recursion;
 use serenity::{
-    all::Message,
+    all::{Message, User},
+    builder::{CreateEmbed, CreateEmbedAuthor, CreateMessage, EditMessage},
     client::Context,
     framework::standard::{macros::command, CommandResult},
 };
+use songbird::input::AuxMetadata;
 
-use crate::bot::common::{try_say, QueueKey};
+use crate::bot::{
+    common::{try_say, QueueKey},
+    constants::{BACK_EMOJI, NEXT_EMOJI},
+    utils::reaction_collector::{ActionEnumTrait, ReactionCollector},
+};
+
+use super::artist::EmbedCreator;
 
 const QUERY_COUNT: usize = 10;
 #[command]
 pub async fn queue(ctx: &Context, msg: &Message) -> CommandResult {
-    if let Some(vec) = ctx.data.read().await.get::<QueueKey>() {
-        let len = usize::clamp(QUERY_COUNT, 0, vec.len());
-
-        if len == 0 {
-            try_say(msg.channel_id, ctx, "Nothing in the queue!").await;
-            return Ok(());
-        }
-
-        let mut text = String::new();
-        text.push_str(format!("First {} songs in queue! ( {} in total )", len, vec.len()).as_str());
-        let arr = vec.range(..len);
-        {
-            for (index, element) in arr.enumerate() {
-                text.push_str("```");
-                if let Some(title) = &element.title {
-                    let info = format!("{}. {}", index + 1, title);
-                    text.push_str(info.as_str());
-                }
-                text.push_str("```");
-            }
-        }
-
-        try_say(msg.channel_id, ctx, text.as_str()).await
+    if let Ok(message) = msg
+        .channel_id
+        .send_message(ctx, CreateMessage::new().content("Loading queue..."))
+        .await
+    {
+        explore_queue(ctx, message, msg.author.clone(), 0, None).await;
     }
     Ok(())
+}
+
+#[async_recursion]
+async fn explore_queue(
+    ctx: &Context,
+    msg: Message,
+    user: User,
+    offset: usize,
+    buffer: Option<Vec<PrettyAuxMetadata>>,
+) -> Option<()> {
+    let mut action_map = Vec::new();
+    let queue: Vec<PrettyAuxMetadata>;
+    if let Some(vec) = buffer {
+        queue = vec;
+    } else {
+        if let Some(vec) = ctx.data.read().await.get::<QueueKey>() {
+            queue = vec
+                .iter()
+                .map(|x| PrettyAuxMetadata {
+                    item: Some(x.clone()),
+                })
+                .collect();
+        } else {
+            queue = Vec::new();
+        }
+    }
+
+    let len = usize::min(queue.len() - offset, QUERY_COUNT);
+    let mut msg_builder = EditMessage::new()
+        .content(
+            format!(
+                "{} - {} ( {} in total )",
+                offset + 1,
+                offset + len,
+                queue.len()
+            )
+            .as_str(),
+        )
+        .embeds(Vec::new());
+
+    if len == 0 {
+        try_say(msg.channel_id, ctx, "Nothing in the queue!").await;
+        return None;
+    }
+
+    for i in 0..len {
+        if let Some(embed) = queue[i].to_embed() {
+            // embed = embed.author(CreateEmbedAuthor::new((i + offset + 1).to_string()));
+            msg_builder = msg_builder.add_embed(embed);
+        }
+    }
+
+    if (offset + QUERY_COUNT) < queue.len() {
+        action_map.push((NEXT_EMOJI, NextAction::ExploreQueue(offset + QUERY_COUNT)))
+    }
+
+    if offset >= QUERY_COUNT {
+        action_map.insert(
+            0,
+            (BACK_EMOJI, NextAction::ExploreQueue(offset - QUERY_COUNT)),
+        )
+    }
+
+    let _ = msg.delete_reactions(ctx).await;
+
+    if let Ok(_) = msg.clone().edit(ctx, msg_builder).await {
+        let collector = ReactionCollector::create(action_map);
+        match collector.wait_reaction(&user, msg.clone(), ctx).await {
+            Some(NextAction::ExploreQueue(offset)) => {
+                explore_queue(ctx, msg, user, offset, Some(queue)).await;
+            }
+            _ => (),
+        }
+    }
+
+    None
+}
+
+#[derive(Clone)]
+enum NextAction {
+    ExploreQueue(usize),
+    Error,
+}
+
+impl ActionEnumTrait for NextAction {
+    fn fallback_action() -> Self {
+        NextAction::Error
+    }
+}
+
+pub struct PrettyAuxMetadata {
+    pub item: Option<AuxMetadata>,
+}
+
+impl EmbedCreator for PrettyAuxMetadata {
+    fn to_embed(&self) -> Option<CreateEmbed> {
+        if let Some(target) = &self.item {
+            let mut embed = CreateEmbed::new();
+            if let Some(thumbnail) = &target.thumbnail {
+                let mut url = thumbnail.clone();
+                if !url.starts_with("https:") {
+                    url.insert_str(0, "https:");
+                }
+                embed = embed.thumbnail(url);
+            } else {
+                // todo: add github fallback image
+                const FALLBACK: &str = "";
+                embed = embed.thumbnail(FALLBACK);
+            }
+
+            embed = embed.title(&target.title.clone().unwrap_or_default());
+            embed = embed.url(&target.source_url.clone().unwrap_or_default());
+
+            let author = CreateEmbedAuthor::new(&target.artist.clone().unwrap_or_default());
+            embed = embed.author(author);
+
+            return Some(embed);
+        }
+        None
+    }
 }
