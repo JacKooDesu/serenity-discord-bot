@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
-use crate::bot::common::{add_song, SongBeginNotifier};
+use crate::bot::{
+    commands::join::{join_voice, JoinActionEnum},
+    common::{add_song, SongBeginNotifier},
+};
 
-use super::super::common::{check_msg, say, try_say, HttpKey};
+use super::super::common::{check_msg, try_say, HttpKey};
 use serenity::{
     all::ChannelId,
     client::Context,
@@ -53,14 +56,18 @@ pub(super) async fn play(ctx: &Context, msg: &Message, mut args: Args) -> Comman
         .await;
     } else {
         let src = YoutubeDl::new(http_client, url);
+
+        if let Err(Some(err_msg)) = join_voice(ctx, JoinActionEnum::ByMessage(msg.clone())).await {
+            try_say(msg.channel_id, ctx, err_msg).await;
+            return Ok(());
+        }
+
         if let Some(result) = add_song(ctx, guild_id, src).await {
             if let Some(_) = result.1 {
                 create_song_begin_event(send_http, Arc::new(ctx.clone()), result.0, channel_id)
                     .await;
             }
             try_say(msg.channel_id, ctx, "Song Added!").await;
-        } else {
-            say(msg.channel_id, ctx, "Not in voice channel!").await;
         }
     }
 

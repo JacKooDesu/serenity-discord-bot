@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use crate::bot::{
-    commands::play::create_song_begin_event,
+    commands::{
+        join::{join_voice, JoinActionEnum},
+        play::create_song_begin_event,
+    },
     common::{add_song, check_msg, try_say, HttpKey},
 };
 use serde::{Deserialize, Serialize};
@@ -51,6 +54,11 @@ pub async fn playlist(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
         )
         .await;
     } else {
+        if let Err(Some(err_msg)) = join_voice(ctx, JoinActionEnum::ByMessage(msg.clone())).await {
+            try_say(msg.channel_id, ctx, err_msg).await;
+            return Ok(());
+        }
+
         let songs = flat_list(url.as_str()).await;
         for s in songs {
             let src = YoutubeDl::new(http_client.clone(), s);

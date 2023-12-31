@@ -1,17 +1,16 @@
-use std::{collections::HashMap, env, sync::Arc, time::Duration};
+use std::{env, sync::Arc};
 
 use async_recursion::async_recursion;
 use invidious::{
     hidden::SearchItem, ClientAsync as YtClient, ClientAsyncTrait, CommonChannel, CommonVideo,
 };
 use serenity::{
-    all::{Message, ReactionType, User},
+    all::{Message, User},
     builder::{CreateEmbed, CreateEmbedAuthor, CreateMessage, EditMessage},
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
 };
 use songbird::{input::YoutubeDl, typemap::TypeMapKey};
-use tracing_subscriber::fmt::format::Pretty;
 
 use crate::bot::{
     common::{add_song, say, try_say, HttpKey},
@@ -19,7 +18,10 @@ use crate::bot::{
     utils::reaction_collector::{ActionEnumTrait, ReactionCollector},
 };
 
-use super::play::create_song_begin_event;
+use super::{
+    join::{join_voice, JoinActionEnum},
+    play::create_song_begin_event,
+};
 
 const ARTIST_RESULT_LEN: usize = 3;
 #[command]
@@ -148,7 +150,7 @@ async fn explore_videos(
     if let Ok(_) = msg.clone().edit(ctx, msg_builder).await {
         let collector = ReactionCollector::create(action_map);
         match collector.wait_reaction(&user, msg.clone(), ctx).await {
-            Some(NextAction::Finished(id)) => selected_video(ctx, msg, id.as_str()).await,
+            Some(NextAction::Finished(id)) => selected_video(ctx, user, msg, id.as_str()).await,
             Some(NextAction::ExploreVideos(id, page)) => {
                 explore_videos(ctx, msg, user, id.as_str(), page, Some(videos)).await;
             }
@@ -158,7 +160,7 @@ async fn explore_videos(
     Some(())
 }
 
-async fn selected_video(ctx: &Context, msg: Message, id: &str) {
+async fn selected_video(ctx: &Context, user: User, msg: Message, id: &str) {
     let http_client = {
         let data = ctx.data.read().await;
         let http_client = data
@@ -167,6 +169,13 @@ async fn selected_video(ctx: &Context, msg: Message, id: &str) {
             .expect("Cannot get http clinet!");
         http_client
     };
+    if let Err(Some(err_msg)) =
+        join_voice(ctx, JoinActionEnum::ByUser(msg.guild_id.unwrap(), user)).await
+    {
+        try_say(msg.channel_id, ctx, err_msg).await;
+        return ();
+    }
+
     let src = YoutubeDl::new(http_client, format!("https://youtu.be/{}", id));
     if let Some(result) = add_song(ctx, msg.clone().guild_id.unwrap(), src).await {
         if let Some(_) = result.1 {
@@ -179,8 +188,6 @@ async fn selected_video(ctx: &Context, msg: Message, id: &str) {
             .await;
         }
         try_say(msg.channel_id, ctx, "Song Added!").await;
-    } else {
-        say(msg.channel_id, ctx, "Not in voice channel!").await;
     }
 }
 

@@ -18,7 +18,11 @@ use crate::bot::{
     utils::reaction_collector::{ActionEnumTrait, ReactionCollector},
 };
 
-use super::{play::create_song_begin_event, playlist::flat_list};
+use super::{
+    join::{join_voice, JoinActionEnum},
+    play::create_song_begin_event,
+    playlist::flat_list,
+};
 
 #[command]
 #[only_in(guilds)]
@@ -121,7 +125,7 @@ async fn explore_albums(
     if let Ok(_) = msg.clone().edit(ctx, msg_builder).await {
         let collector = ReactionCollector::create(action_map);
         match collector.wait_reaction(&user, msg.clone(), ctx).await {
-            Some(NextAction::Finished(id)) => selected_album(ctx, msg, id.as_str()).await,
+            Some(NextAction::Finished(id)) => selected_album(ctx, user, msg, id.as_str()).await,
             Some(NextAction::ExploreVideos(id, page)) => {
                 explore_albums(ctx, msg, user, id.as_str(), page, Some(videos)).await;
             }
@@ -131,7 +135,7 @@ async fn explore_albums(
     Some(())
 }
 
-async fn selected_album(ctx: &Context, msg: Message, id: &str) {
+async fn selected_album(ctx: &Context, user: User, msg: Message, id: &str) {
     let guild_id = msg.guild_id.unwrap();
 
     let http_client = {
@@ -145,6 +149,11 @@ async fn selected_album(ctx: &Context, msg: Message, id: &str) {
 
     let channel_id = msg.channel_id;
     let send_http = ctx.http.clone();
+
+    if let Err(Some(err_msg)) = join_voice(ctx, JoinActionEnum::ByUser(guild_id, user)).await {
+        try_say(msg.channel_id, ctx, err_msg).await;
+        return ();
+    }
 
     let songs = flat_list(format!("https://youtube.com/playlist?list={}", id).as_str()).await;
     for s in songs {
