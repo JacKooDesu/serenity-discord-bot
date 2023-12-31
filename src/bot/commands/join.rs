@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serenity::{
     all::{ChannelId, GuildId, User},
     client::Context,
@@ -6,7 +8,7 @@ use serenity::{
 };
 use songbird::TrackEvent;
 
-use crate::bot::common::{get_manager, try_say, TrackErrorNotifier};
+use crate::bot::common::{get_manager, try_say, TrackEndNotifier, TrackErrorNotifier};
 
 #[command]
 #[only_in(guilds)]
@@ -62,6 +64,14 @@ pub(crate) async fn join_voice(ctx: &Context, action: JoinActionEnum) -> Result<
         if let Ok(handler_lock) = manager.join(guild, channel).await {
             let mut handler = handler_lock.lock().await;
             handler.add_global_event(TrackEvent::Error.into(), TrackErrorNotifier);
+            handler.add_global_event(
+                TrackEvent::End.into(),
+                TrackEndNotifier {
+                    guild_id: guild,
+                    songbird: manager,
+                    context: Arc::new(ctx.clone()),
+                },
+            );
             return Ok(());
         }
     } else {

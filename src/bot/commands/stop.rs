@@ -4,7 +4,7 @@ use serenity::{
     framework::standard::{macros::command, CommandResult},
 };
 
-use crate::bot::common::{say, try_say, QueueKey};
+use crate::bot::common::{get_manager, say, try_say, QueueKey};
 
 #[command]
 #[only_in(guilds)]
@@ -25,6 +25,8 @@ async fn stop(ctx: &Context, msg: &Message) -> CommandResult {
         if let Some(vec) = ctx.data.write().await.get_mut::<QueueKey>() {
             vec.clear()
         }
+
+        let _ = get_manager(ctx).await.remove(guild_id).await;
     } else {
         say(msg.channel_id, ctx, "Not in voice channel!").await
     }

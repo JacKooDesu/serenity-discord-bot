@@ -1,4 +1,4 @@
-use std::{collections::VecDeque, sync::Arc};
+use std::{collections::VecDeque, sync::Arc, usize};
 
 use serenity::{
     all::{ChannelId, GuildId},
@@ -137,6 +137,30 @@ impl VoiceEventHandler for TrackErrorNotifier {
             }
         }
 
+        None
+    }
+}
+pub struct TrackEndNotifier {
+    pub guild_id: GuildId,
+    pub songbird: Arc<Songbird>,
+    pub context: Arc<Context>,
+}
+
+#[async_trait]
+impl VoiceEventHandler for TrackEndNotifier {
+    async fn act(&self, ctx: &EventContext<'_>) -> Option<Event> {
+        if let EventContext::Track(_) = ctx {
+            if let usize::MIN = self
+                .context
+                .data
+                .read()
+                .await
+                .get::<QueueKey>()
+                .map_or(usize::MIN, |vec| vec.len())
+            {
+                let _ = self.songbird.remove(self.guild_id).await;
+            }
+        }
         None
     }
 }
