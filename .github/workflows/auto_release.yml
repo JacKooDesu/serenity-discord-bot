@@ -32,7 +32,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            serenity-discord-bot_windowns.7z
+            archive/serenity-discord-bot_windowns.7z
 
   build-linux:
     if: startsWith(github.ref, 'refs/tags/')
@@ -56,4 +56,4 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            serenity-discord-bot_linux.7z
+            archive/serenity-discord-bot_linux.7z
