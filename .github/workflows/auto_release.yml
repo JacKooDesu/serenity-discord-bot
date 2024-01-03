@@ -1,0 +1,67 @@
+name: build-release
+
+on:
+  push:
+    branches: ["release"]
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  make-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Make Release
+        uses: softprops/action-gh-release@v1
+
+  build-window:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      # - name: Build (Window)
+      #   run: cargo build --release --verbose
+
+      # - name: Archive
+      #   shell: bash
+      #   run: |
+      #     mkdir archive
+      #     cp env-template.env archive/
+      #     cd archive
+      #     mv env-template.env .env
+      #     cp "../target/release/serenity-discord-bot.exe" ./
+      #     7z a "serenity-discord-bot.7z" serenity-discord-bot.exe .env
+
+      - name: Build
+        run: echo ${{ github.sha }} > Release.txt
+
+      - name: Upload Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            Release.txt
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      # - name: Build (Linux)
+      #   run: cargo build --release --verbose
+
+      # - name: Archive
+      #   shell: bash
+      #   run: |
+      #     mkdir archive
+      #     cd archive
+      #     cp "../target/release/serenity-discord-bot" ./
+
+      - name: Build
+        run: echo ${{ github.sha }} > Release.txt
+
+      - name: Upload Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            Release.txt
