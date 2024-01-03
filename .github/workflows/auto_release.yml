@@ -36,7 +36,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            Release.txt
+            Release-Windows.txt
 
   build-linux:
     if: startsWith(github.ref, 'refs/tags/')
@@ -54,7 +54,7 @@ jobs:
       #     cp "../target/release/serenity-discord-bot" ./
 
       - name: Build
-        run: echo ${{ github.sha }} > Release.txt
+        run: echo ${{ github.sha }} > Release-Linux.txt
 
       - name: Upload Asset
         uses: softprops/action-gh-release@v1
