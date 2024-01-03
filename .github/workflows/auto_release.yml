@@ -1,4 +1,4 @@
-name: build-release
+name: auto-release
 
 on:
   push:
@@ -11,12 +11,6 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  make-release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Make Release
-        uses: softprops/action-gh-release@v1
-
   build-window:
     runs-on: windows-latest
     steps:
@@ -39,6 +33,7 @@ jobs:
 
       - name: Upload Asset
         uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             Release.txt
@@ -62,6 +57,7 @@ jobs:
 
       - name: Upload Asset
         uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
             Release.txt
