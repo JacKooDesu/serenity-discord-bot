@@ -29,7 +29,7 @@ jobs:
       #     7z a "serenity-discord-bot.7z" serenity-discord-bot.exe .env
 
       - name: Build
-        run: echo ${{ github.sha }} > Release.txt
+        run: echo ${{ github.sha }} > Release-Windows.txt
 
       - name: Upload Asset
         uses: softprops/action-gh-release@v1
@@ -60,4 +60,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            Release.txt
+            Release-Linux.txt
