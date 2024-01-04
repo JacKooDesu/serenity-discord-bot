@@ -1,19 +1,16 @@
 use async_recursion::async_recursion;
 use serenity::{
     all::{Message, User},
-    builder::{CreateEmbed, CreateEmbedAuthor, CreateMessage, EditMessage},
+    builder::{CreateMessage, EditMessage},
     client::Context,
     framework::standard::{macros::command, CommandResult},
 };
-use songbird::input::AuxMetadata;
 
 use crate::bot::{
     common::{try_say, QueueKey},
     constants::{BACK_EMOJI, NEXT_EMOJI},
-    utils::reaction_collector::{ActionEnumTrait, ReactionCollector},
+    utils::reaction_collector::{ActionEnumTrait, ReactionCollector}, prettier::{PrettyAuxMetadata, prettier::EmbedCreator},
 };
-
-use super::artist::EmbedCreator;
 
 const QUERY_COUNT: usize = 10;
 #[command]
@@ -113,37 +110,5 @@ enum NextAction {
 impl ActionEnumTrait for NextAction {
     fn fallback_action() -> Self {
         NextAction::Error
-    }
-}
-
-pub struct PrettyAuxMetadata {
-    pub item: Option<AuxMetadata>,
-}
-
-impl EmbedCreator for PrettyAuxMetadata {
-    fn to_embed(&self) -> Option<CreateEmbed> {
-        if let Some(target) = &self.item {
-            let mut embed = CreateEmbed::new();
-            if let Some(thumbnail) = &target.thumbnail {
-                let mut url = thumbnail.clone();
-                if !url.starts_with("https:") {
-                    url.insert_str(0, "https:");
-                }
-                embed = embed.thumbnail(url);
-            } else {
-                // todo: add github fallback image
-                const FALLBACK: &str = "";
-                embed = embed.thumbnail(FALLBACK);
-            }
-
-            embed = embed.title(&target.title.clone().unwrap_or_default());
-            embed = embed.url(&target.source_url.clone().unwrap_or_default());
-
-            let author = CreateEmbedAuthor::new(&target.artist.clone().unwrap_or_default());
-            embed = embed.author(author);
-
-            return Some(embed);
-        }
-        None
     }
 }

@@ -5,16 +5,17 @@ use invidious::{ClientAsync as YtClient, CommonPlaylist, PublicItems};
 use serde::{Deserialize, Serialize};
 use serenity::{
     all::{Message, User},
-    builder::{CreateEmbed, CreateEmbedAuthor, CreateMessage, EditMessage},
+    builder::{CreateEmbedAuthor, CreateMessage, EditMessage},
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
 };
 use songbird::input::YoutubeDl;
 
 use crate::bot::{
-    commands::artist::{find_artist, EmbedCreator, YtClientKey},
+    commands::artist::{find_artist, YtClientKey},
     common::{add_song, say, try_say, HttpKey},
     constants::{BACK_EMOJI, NEXT_EMOJI, NUM_EMOJI},
+    prettier::{prettier::EmbedCreator, PrettyPlaylist},
     utils::reaction_collector::{ActionEnumTrait, ReactionCollector},
 };
 
@@ -203,35 +204,4 @@ pub async fn channel_releases(
     params: Option<&str>,
 ) -> Result<ChannelReleases, invidious::InvidiousError> {
     ChannelReleases::fetch_async(client, Some(id), params).await
-}
-
-pub struct PrettyPlaylist {
-    pub item: Option<CommonPlaylist>,
-}
-
-impl PrettyPlaylist {
-    pub fn new(item: Option<CommonPlaylist>) -> Self {
-        PrettyPlaylist { item }
-    }
-}
-
-impl EmbedCreator for PrettyPlaylist {
-    fn to_embed(&self) -> Option<CreateEmbed> {
-        if let Some(target) = &self.item {
-            let mut embed = CreateEmbed::new();
-            embed = embed.title(target.title.as_str());
-            embed = embed.thumbnail(target.thumbnail.as_str());
-            embed = embed.url(format!("https://youtube.com/playlist?list={}", &target.id));
-
-            let mut author = CreateEmbedAuthor::new(target.author.clone());
-            {
-                author = author.url(format!("http://youtube.com/channel/{}", target.author_id));
-            }
-            embed = embed.author(author);
-
-            return Some(embed);
-        }
-
-        None
-    }
 }

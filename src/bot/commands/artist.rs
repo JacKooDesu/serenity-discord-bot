@@ -1,12 +1,10 @@
 use std::{env, sync::Arc};
 
 use async_recursion::async_recursion;
-use invidious::{
-    hidden::SearchItem, ClientAsync as YtClient, ClientAsyncTrait, CommonChannel, CommonVideo,
-};
+use invidious::{ClientAsync as YtClient, ClientAsyncTrait, CommonVideo};
 use serenity::{
     all::{Message, User},
-    builder::{CreateEmbed, CreateEmbedAuthor, CreateMessage, EditMessage},
+    builder::{CreateEmbedAuthor, CreateMessage, EditMessage},
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
 };
@@ -15,6 +13,7 @@ use songbird::{input::YoutubeDl, typemap::TypeMapKey};
 use crate::bot::{
     common::{add_song, say, try_say, HttpKey},
     constants::{BACK_EMOJI, INVIDIOUS_INSTANCE_KEY, NEXT_EMOJI, NUM_EMOJI, REGION_KEY},
+    prettier::{prettier::EmbedCreator, PrettyChannel, PrettyVideo},
     utils::reaction_collector::{ActionEnumTrait, ReactionCollector},
 };
 
@@ -215,91 +214,4 @@ impl ActionEnumTrait for NextAction {
 pub struct YtClientKey {}
 impl TypeMapKey for YtClientKey {
     type Value = YtClient;
-}
-
-pub struct PrettyChannel {
-    pub item: Option<CommonChannel>,
-}
-
-pub struct PrettyVideo {
-    pub item: Option<CommonVideo>,
-}
-
-pub trait EmbedCreator {
-    fn to_embed(&self) -> Option<CreateEmbed>;
-}
-
-impl PrettyChannel {
-    pub fn new(item: Option<SearchItem>) -> Self {
-        let mut x = PrettyChannel { item: None };
-        if let Some(SearchItem::Channel(channel)) = item {
-            x.item = Some(channel);
-        }
-        x
-    }
-}
-
-impl PrettyVideo {
-    pub fn new(item: Option<SearchItem>) -> Self {
-        let mut x = PrettyVideo { item: None };
-        if let Some(SearchItem::Video(video)) = item {
-            x.item = Some(video);
-        }
-        x
-    }
-
-    pub fn video(video: Option<CommonVideo>) -> Self {
-        PrettyVideo { item: video }
-    }
-}
-
-impl EmbedCreator for PrettyChannel {
-    fn to_embed(&self) -> Option<CreateEmbed> {
-        if let Some(target) = &self.item {
-            let mut embed = CreateEmbed::new();
-            if let Some(thumbnail) = &target.thumbnails.last() {
-                let mut url = thumbnail.url.clone();
-                if !url.starts_with("https:") {
-                    url.insert_str(0, "https:");
-                }
-                embed = embed.thumbnail(url);
-            } else {
-                // todo: add github fallback image
-                const FALLBACK: &str = "";
-                embed = embed.thumbnail(FALLBACK);
-            }
-            embed = embed.title(&target.name);
-            embed = embed.url(format!("http://youtube.com{}", &target.url));
-            embed = embed.description(&target.description_html);
-
-            return Some(embed);
-        }
-        None
-    }
-}
-
-impl EmbedCreator for PrettyVideo {
-    fn to_embed(&self) -> Option<CreateEmbed> {
-        if let Some(target) = &self.item {
-            let mut embed = CreateEmbed::new();
-
-            if let Some(thumbnail) = target.thumbnails.first() {
-                embed = embed.thumbnail(thumbnail.url.as_str());
-            } else {
-                // todo: add github fallback image
-                const FALLBACK: &str = "";
-                embed = embed.thumbnail(FALLBACK);
-            }
-            embed = embed.title(target.title.as_str());
-            embed = embed.url(format!("http://youtu.be/{}", &target.id));
-            let mut author = CreateEmbedAuthor::new(target.author.clone());
-            {
-                author = author.url(format!("http://youtube.com{}", target.author_url));
-            }
-            embed = embed.author(author);
-
-            return Some(embed);
-        }
-        None
-    }
 }
