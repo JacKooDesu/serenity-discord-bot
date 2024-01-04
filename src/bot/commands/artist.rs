@@ -291,7 +291,7 @@ impl EmbedCreator for PrettyVideo {
                 embed = embed.thumbnail(FALLBACK);
             }
             embed = embed.title(target.title.as_str());
-            embed = embed.url(format!("http://youtube.com/{}", &target.id));
+            embed = embed.url(format!("http://youtu.be/{}", &target.id));
             let mut author = CreateEmbedAuthor::new(target.author.clone());
             {
                 author = author.url(format!("http://youtube.com{}", target.author_url));
