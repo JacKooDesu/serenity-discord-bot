@@ -16,9 +16,11 @@ async fn stop(ctx: &Context, msg: &Message) -> CommandResult {
         .clone();
 
     if let Some(handler_lock) = manager.get(guild_id) {
-        let handler = handler_lock.lock().await;
-        let queue = handler.queue();
-        queue.stop();
+        {
+            let handler = handler_lock.lock().await;
+            let queue = handler.queue();
+            queue.stop();
+        }
 
         try_say(msg.channel_id, ctx, "Queue cleared!").await;
 
