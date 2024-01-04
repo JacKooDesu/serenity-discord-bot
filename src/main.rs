@@ -13,13 +13,12 @@ use reqwest::Client as HttpClient;
 
 mod bot;
 use bot::{
-    commands::search::*,
     commands::GENERAL_GROUP,
-    common::{create_config, CommonConfigKey, HttpKey, QueueKey, VolumeKey},
+    common::{create_config, CommonConfigKey, QueueKey, VolumeKey},
     constants::*,
 };
 
-use crate::bot::commands::artist::{init_yt_client, YtClientKey};
+use crate::bot::clients::{init_yt_client, YtClientKey, YtHubKey, init_yt_hub, HttpKey};
 
 struct Handler;
 #[async_trait]

@@ -5,7 +5,7 @@ use crate::bot::{
         join::{join_voice, JoinActionEnum},
         play::create_song_begin_event,
     },
-    common::{add_song, check_msg, try_say, HttpKey},
+    common::{add_song, check_msg, try_say}, clients::HttpKey,
 };
 use serde::{Deserialize, Serialize};
 use serenity::{

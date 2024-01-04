@@ -17,13 +17,6 @@ use songbird::{
     Songbird,
 };
 
-use reqwest::Client as HttpClient;
-
-pub struct HttpKey;
-impl TypeMapKey for HttpKey {
-    type Value = HttpClient;
-}
-
 pub struct CommonConfigKey;
 impl TypeMapKey for CommonConfigKey {
     type Value = CommonConfig;

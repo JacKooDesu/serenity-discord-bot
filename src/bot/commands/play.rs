@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use crate::bot::{
     commands::join::{join_voice, JoinActionEnum},
-    common::{add_song, SongBeginNotifier},
+    common::{add_song, SongBeginNotifier}, clients::HttpKey,
 };
 
-use super::super::common::{check_msg, try_say, HttpKey};
+use super::super::common::{check_msg, try_say};
 use serenity::{
     all::ChannelId,
     client::Context,

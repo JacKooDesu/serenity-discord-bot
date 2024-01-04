@@ -1,18 +1,19 @@
 use std::{env, sync::Arc};
 
 use async_recursion::async_recursion;
-use invidious::{ClientAsync as YtClient, ClientAsyncTrait, CommonVideo};
+use invidious::{ClientAsyncTrait, CommonVideo};
 use serenity::{
     all::{Message, User},
     builder::{CreateEmbedAuthor, CreateMessage, EditMessage},
     client::Context,
     framework::standard::{macros::command, Args, CommandResult},
 };
-use songbird::{input::YoutubeDl, typemap::TypeMapKey};
+use songbird::input::YoutubeDl;
 
 use crate::bot::{
-    common::{add_song, say, try_say, HttpKey},
-    constants::{BACK_EMOJI, INVIDIOUS_INSTANCE_KEY, NEXT_EMOJI, NUM_EMOJI, REGION_KEY},
+    clients::{YtClientKey, HttpKey},
+    common::{add_song, say, try_say},
+    constants::{BACK_EMOJI, NEXT_EMOJI, NUM_EMOJI, REGION_KEY},
     prettier::{prettier::EmbedCreator, PrettyChannel, PrettyVideo},
     utils::reaction_collector::{ActionEnumTrait, ReactionCollector},
 };
@@ -190,14 +191,6 @@ async fn selected_video(ctx: &Context, user: User, msg: Message, id: &str) {
     }
 }
 
-pub async fn init_yt_client() -> YtClient {
-    if let Ok(instance) = env::var(INVIDIOUS_INSTANCE_KEY) {
-        YtClient::new(instance, invidious::MethodAsync::default())
-    } else {
-        YtClient::default()
-    }
-}
-
 #[derive(Clone)]
 pub(crate) enum NextAction {
     ExploreVideos(String, usize),
@@ -209,9 +202,4 @@ impl ActionEnumTrait for NextAction {
     fn fallback_action() -> Self {
         NextAction::Error
     }
-}
-
-pub struct YtClientKey {}
-impl TypeMapKey for YtClientKey {
-    type Value = YtClient;
 }

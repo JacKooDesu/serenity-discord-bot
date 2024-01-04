@@ -12,8 +12,9 @@ use serenity::{
 use songbird::input::YoutubeDl;
 
 use crate::bot::{
-    commands::artist::{find_artist, YtClientKey},
-    common::{add_song, say, try_say, HttpKey},
+    clients::{YtClientKey, HttpKey},
+    commands::artist::find_artist,
+    common::{add_song, say, try_say},
     constants::{BACK_EMOJI, NEXT_EMOJI, NUM_EMOJI},
     prettier::{prettier::EmbedCreator, PrettyPlaylist},
     utils::reaction_collector::{ActionEnumTrait, ReactionCollector},
