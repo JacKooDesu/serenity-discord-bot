@@ -166,20 +166,19 @@ pub async fn add_song(
     let manager = get_manager(ctx).await;
     if let Some(handler_lock) = manager.get(guild_id) {
         let mut handler = handler_lock.lock().await;
-        let metadata = input.aux_metadata().await;
-        let track = handler.enqueue_input(input.into()).await;
+        if let Ok(meta) = input.aux_metadata().await {
+            let track = handler.enqueue_input(input.into()).await;
 
-        if let Some(volume) = ctx.data.read().await.get::<VolumeKey>() {
-            let _ = track.set_volume(volume.clone());
-        }
+            if let Some(volume) = ctx.data.read().await.get::<VolumeKey>() {
+                let _ = track.set_volume(volume.clone());
+            }
 
-        if let Ok(meta) = metadata {
             if let Some(vec) = ctx.data.write().await.get_mut::<QueueKey>() {
                 vec.push_back(meta.clone());
                 return Some((track, Some(meta)));
             }
+            return Some((track, None));
         }
-        return Some((track, None));
     }
     None
 }
